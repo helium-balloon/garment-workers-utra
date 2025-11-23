@@ -1,0 +1,181 @@
+# Exploration into Weekly Spending
+# UTRA Fall 2025, Garment Workers in Bangladesh Diaries Analysis
+# Created: 10/21/25
+# Last edited: 11/23/25 Megan Ball
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import textwrap
+
+#importing  data and making a copy 
+clean_df = pd.read_csv("clean-data\clean_Bangladesh_GWD_Diaries.csv", index_col=False)
+
+# amts per week
+weekly_df = clean_df.copy()
+weekly_df = weekly_df[weekly_df['Type'] == 'Outflow'] # for now only setting to have outflow spending
+weekly_df['Original_verified_amount'] = weekly_df['Verified_amount']
+weekly_df['Verified_amount'] = weekly_df['Verified_amount'].replace(999, np.nan) # replace so sum doesn't include 999
+
+# create categories
+categories_label = {1: '1. Food', 2: '2. Education', 3:'3. Essentials', 4: '4. Financial', 5: '5. Other'}
+categories_label2 = {1:'1. Food' , 2: '2. Education', 3:'3. Essentials', 4: 'Financial', 5: '8. Other'}
+item_categories_label = {'FOOD': 1, 'FINANCIAL': 4, 'TRANSPORT': 3, 'CLOTHING': 5, 'EMPLOYMENT': 5,
+                         'RECREATIONAL SUBSTANCES':5,'HEALTH': 3, 'HOUSEHOLD ITEM':5 , 'COMMUNICATION':3, 
+                         'PERSONAL HYGIENE': 3, 'COSMETIC': 5, 'CHARITY OR RELIGIOUS':5, 
+                         'HOUSING':3 , 'SERVICE': 5, 'EDUCATION': 2, 'LEISURE':5 , 'MISCELLANEOUS':5 , 'UTILITIES':3, 
+                         'LEGAL FEE OR CONTRIBUTION':5 , 'FUEL':3 , 'HOUSEHOLD APPLIANCE':5, 'ELECTRONIC DEVICE': 5, 
+                         'HOLIDAY OR CELEBRATION':5 , 'LIVESTOCK':5, 
+                         'CONSTRUCTION': 5, 'AGRICULTURE': 5, 'WEDDING':5 }
+weekly_df['all_categories'] = weekly_df['Item_category'].map(item_categories_label)
+weekly_df['category_label'] = weekly_df['all_categories'].map(categories_label)
+weekly_df['category_label2'] = weekly_df['all_categories'].map(categories_label2)
+
+tool_map = {
+    'Cash Transfer': '4. Cash Transfer',
+    'Savings': '7. Savings',
+    'Loan': '6. Loan',
+    'Insurance': '5. Insurance',
+}
+weekly_df['category_split'] = np.where(
+    weekly_df['category_label'] == '4. Financial',
+    weekly_df['Tool'].map(tool_map),
+    weekly_df['category_label2']
+)
+
+# print(weekly_df['category_split'].value_counts())
+
+#### The next two graphs are the medians based on week by all categories then by the 8 finer categories
+
+## save one denominator to work off of - based on the fine grain categories - used for all calculations
+med1 = weekly_df.groupby(['Week', 'Item_category'])['Original_verified_amount'].median().reset_index()
+
+#weekly totals = sum of medians across all fine-grained categories - use as denominator!
+week_totals = med1.groupby('Week')['Original_verified_amount'].sum().reset_index()
+week_totals = week_totals.rename(columns={'Original_verified_amount': 'weekly_total'})
+
+med1 = med1.merge(week_totals, on='Week', how='left')
+med1['Percent'] = (med1['Original_verified_amount'] / med1['weekly_total']) * 100
+
+pivot_df = med1.pivot(index='Week', columns='Item_category', values='Percent').fillna(0)
+pivot_df = pivot_df.round(2)
+
+colors = [
+    "black","dimgray","lightgray","darkorange","orange","gold","khaki","brown",
+    "chocolate","sienna",
+    "tan","skyblue","deepskyblue","steelblue","dodgerblue",
+    "royalblue","navy","slateblue","mediumpurple","purple","orchid","magenta","hotpink",
+    "deeppink","teal","darkcyan","mediumturquoise"
+]
+
+pivot_df.plot(
+    kind='bar',
+    stacked=True,
+    figsize=(10,6),
+    color=colors 
+)
+
+plt.title('Median Weekly Spend by Category (%)')
+plt.xlabel('Week')
+plt.ylabel('Percent of Total Spend')
+plt.legend(title='Category', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize='small')
+plt.tight_layout()
+plt.figtext(.50,.03,"Calculated median over each week by category", fontsize='8')
+plt.savefig("output/median_catall_week.png")
+plt.show()
+
+pivot_df.to_csv("output/median_catall_week.csv")
+
+## making it so we add up the medians - THIS WORKS HOW I WANT IT TO
+mapping = weekly_df[['Item_category', 'category_label2']].drop_duplicates()
+med_fine = med1.merge(mapping, on='Item_category', how='left')
+median_grouped = (
+    med_fine.groupby(['Week', 'category_label2'])['Original_verified_amount']
+    .sum()
+    .reset_index()
+)
+week_totals = (
+    med_fine.groupby('Week')['Original_verified_amount']
+    .sum()
+    .reset_index()
+    .rename(columns={'Original_verified_amount': 'weekly_total'})
+)
+median_grouped = median_grouped.merge(week_totals, on='Week')
+median_grouped['Percent'] = median_grouped['Original_verified_amount'] / median_grouped['weekly_total'] * 100
+median_grouped.rename(columns={'category_label2': 'category'}, inplace=True)
+# median_grouped.to_csv("output/med_grouped_whole.csv")
+
+## then, splitting up financial by tool
+mapping = weekly_df[['Item_category', 'category_label2']].drop_duplicates()
+# map the medians for each category and map with the categorylabel2
+med_fine = med1.merge(mapping, on='Item_category', how='left')
+# group to get the category total per week (will be the numerator in percent)
+med_grouped = (
+    med_fine.groupby(['Week', 'category_label2'])['Original_verified_amount']
+    .sum()
+    .reset_index()
+    .rename(columns={'Original_verified_amount': 'category_weekly_total'})
+)
+# group to get spend total per week, will be denominator in percent
+week_totals = (
+    med_fine.groupby('Week')['Original_verified_amount']
+    .sum()
+    .reset_index()
+    .rename(columns={'Original_verified_amount': 'weekly_total'})
+)
+med_grouped = med_grouped.merge(week_totals, on='Week')
+med_grouped['Percent'] = med_grouped['category_weekly_total'] / med_grouped['weekly_total'] * 100
+med_grouped_pivot = med_grouped.pivot(index='Week', columns='category_label2', values='Percent').fillna(0)
+
+financial_pct = med_grouped[med_grouped['category_label2'] == 'Financial'][['Week', 'Percent']] \
+    .rename(columns={'Percent':'Financial_pct'})
+
+# median amount per tool
+tool_medians = weekly_df[weekly_df['category_label2']=='Financial'] \
+    .groupby(['Week','category_split'])['Original_verified_amount'] \
+    .sum().reset_index()
+
+# median total financial amount per week (not the percentage)
+fin_total_medians = weekly_df[weekly_df['category_label2']=='Financial'] \
+    .groupby('Week')['Original_verified_amount'] \
+    .sum().reset_index().rename(columns={'Original_verified_amount':'fin_median_total'})
+
+tool_medians = tool_medians.merge(fin_total_medians, on='Week')
+# tool_medians.to_csv("output/tools.csv")
+tool_medians['fin_prop'] = tool_medians['Original_verified_amount'] / tool_medians['fin_median_total']
+
+tool_medians = tool_medians.merge(financial_pct, on='Week')
+tool_medians['Percent'] = tool_medians['fin_prop'] * tool_medians['Financial_pct']
+tool_medians.rename(columns={'category_split': 'category'}, inplace=True)
+# tool_medians.to_csv("output/tool_median.csv")
+
+
+## final version with the 8 put together categories
+category_median = median_grouped.copy()
+category_median = category_median[category_median['category'] != "Financial"]
+category_median = pd.concat([category_median, tool_medians], join='inner', ignore_index=True)
+category_median = category_median.sort_values(by=['Week', 'category'])
+# category_median.to_csv("output/aaacheck.csv")
+
+pivot_df = category_median.pivot(index='Week', columns='category', values='Percent').fillna(0)
+pivot_df = pivot_df.round(2)
+
+colors = ["limegreen", "orange", "gold", "paleturquoise", "skyblue", "royalblue", "midnightblue", "gray"]
+
+pivot_df.plot(
+    kind='bar',
+    stacked=True,
+    figsize=(10,6),
+    color=colors 
+)
+
+plt.title('Median Weekly Spend by Category (%)')
+plt.xlabel('Week')
+plt.ylabel('Percent of Total Spend')
+plt.legend(title='Category', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.figtext(.50,.03,"Calculated median over each week by category", fontsize='8')
+plt.savefig("output/median_cat8_week.png")
+plt.show()
+
+pivot_df.to_csv("output/median_cat8_week.csv")

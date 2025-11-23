@@ -1,7 +1,7 @@
 # Exploration into Weekly Spending
 # UTRA Fall 2025, Garment Workers in Bangladesh Diaries Analysis
 # Created: 10/21/25
-# Last edited: 11/7/25 Megan Ball
+# Last edited: 11/10/25 Megan Ball
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -26,19 +26,20 @@ item_categories_label = {'FOOD': 2, 'FINANCIAL': 4, 'TRANSPORT': 3, 'CLOTHING': 
                          'LEGAL FEE OR CONTRIBUTION':5 , 'FUEL':3 , 'HOUSEHOLD APPLIANCE':5, 'ELECTRONIC DEVICE': 5, 
                          'HOLIDAY OR CELEBRATION':5 , 'LIVESTOCK':5, 
                          'CONSTRUCTION': 5, 'AGRICULTURE': 5, 'WEDDING':5 }
-smaller_essentials = {'FOOD': 2, 'FINANCIAL': 4, 'TRANSPORT': 3, 'CLOTHING': 5, 'EMPLOYMENT': 5,
-                         'RECREATIONAL SUBSTANCES':5,'HEALTH': 5, 'HOUSEHOLD ITEM':5 , 'COMMUNICATION':3, 
-                         'PERSONAL HYGIENE': 5, 'COSMETIC': 5, 'CHARITY OR RELIGIOUS':5, 
-                         'HOUSING':3 , 'SERVICE': 5, 'EDUCATION': 1, 'LEISURE':5 , 'MISCELLANEOUS':5 , 'UTILITIES':3, 
-                         'LEGAL FEE OR CONTRIBUTION':5 , 'FUEL':3 , 'HOUSEHOLD APPLIANCE':5, 'ELECTRONIC DEVICE': 5, 
-                         'HOLIDAY OR CELEBRATION':5 , 'LIVESTOCK':5, 
-                         'CONSTRUCTION': 5, 'AGRICULTURE': 5, 'WEDDING':5 }
+## This set of smaller essentials will not be used for analysis as there was not a significant difference in spending
+# smaller_essentials = {'FOOD': 2, 'FINANCIAL': 4, 'TRANSPORT': 3, 'CLOTHING': 5, 'EMPLOYMENT': 5,
+#                          'RECREATIONAL SUBSTANCES':5,'HEALTH': 5, 'HOUSEHOLD ITEM':5 , 'COMMUNICATION':3, 
+#                          'PERSONAL HYGIENE': 5, 'COSMETIC': 5, 'CHARITY OR RELIGIOUS':5, 
+#                          'HOUSING':3 , 'SERVICE': 5, 'EDUCATION': 1, 'LEISURE':5 , 'MISCELLANEOUS':5 , 'UTILITIES':3, 
+#                          'LEGAL FEE OR CONTRIBUTION':5 , 'FUEL':3 , 'HOUSEHOLD APPLIANCE':5, 'ELECTRONIC DEVICE': 5, 
+#                          'HOLIDAY OR CELEBRATION':5 , 'LIVESTOCK':5, 
+#                          'CONSTRUCTION': 5, 'AGRICULTURE': 5, 'WEDDING':5 }
 weekly_df['all_categories'] = weekly_df['Item_category'].map(item_categories_label)
 weekly_df['category_label'] = weekly_df['all_categories'].map(categories_label)
 weekly_df['category_label2'] = weekly_df['all_categories'].map(categories_label2)
 
-weekly_df['smaller_essentials_categories'] = weekly_df['Item_category'].map(smaller_essentials)
-weekly_df['category_label_ess2'] = weekly_df['smaller_essentials_categories'].map(categories_label2)
+# weekly_df['smaller_essentials_categories'] = weekly_df['Item_category'].map(smaller_essentials)
+# weekly_df['category_label_ess2'] = weekly_df['smaller_essentials_categories'].map(categories_label2)
 
 tool_map = {
     'Cash Transfer': 'Cash Transfer',
@@ -70,8 +71,8 @@ all_categories['weekly_totals'] = all_categories.groupby('Week')['weekly_categor
 # # # percentage share/category
 all_categories['Percent'] = (all_categories['weekly_category_spend'] / all_categories['weekly_totals']) * 100
 
-
 pivot_df = all_categories.pivot(index='Week', columns='Item_category', values='Percent').fillna(0)
+pivot_df = pivot_df.round(2)
 
 n = 20
 colors = plt.cm.turbo(np.linspace(0, 1, n))
@@ -224,59 +225,60 @@ pivot_df.to_csv("output/median_percent_split_financial.csv")
 ## Repeating Weekly Percent Split Financial and Median Percent Split Financial
 ## To compare against the smaller essentials group that only contains: transport, housing, utilities, fuel, and comms
 
-financial_df_ess = weekly_df.groupby(['Week', 'category_split2'])['Original_verified_amount'].sum().reset_index()
-financial_df_ess['weekly_category_spend'] = financial_df_ess['Original_verified_amount']
-# # # total amt/week
-financial_df_ess['weekly_totals'] = financial_df_ess.groupby('Week')['weekly_category_spend'].transform('sum')
-# # # percentage share/category
-financial_df_ess['Percent'] = (financial_df_ess['weekly_category_spend'] / financial_df_ess['weekly_totals']) * 100
+## Not Needed, Keeping Essential with health and personal hygiene
+# financial_df_ess = weekly_df.groupby(['Week', 'category_split2'])['Original_verified_amount'].sum().reset_index()
+# financial_df_ess['weekly_category_spend'] = financial_df_ess['Original_verified_amount']
+# # # # total amt/week
+# financial_df_ess['weekly_totals'] = financial_df_ess.groupby('Week')['weekly_category_spend'].transform('sum')
+# # # # percentage share/category
+# financial_df_ess['Percent'] = (financial_df_ess['weekly_category_spend'] / financial_df_ess['weekly_totals']) * 100
 
-pivot_df = financial_df_ess.pivot(index='Week', columns='category_split2', values='Percent').fillna(0)
+# pivot_df = financial_df_ess.pivot(index='Week', columns='category_split2', values='Percent').fillna(0)
 
-pivot_df.plot(
-    kind='bar',
-    stacked=True,
-    figsize=(10,6),
-    colormap='tab20' 
-)
+# pivot_df.plot(
+#     kind='bar',
+#     stacked=True,
+#     figsize=(10,6),
+#     colormap='tab20' 
+# )
 
-plt.title('Weekly Spend by Category (%)')
-plt.xlabel('Week')
-plt.ylabel('Percent of Total Spend')
-plt.legend(title='Category', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.tight_layout()
-plt.savefig("output/weekly_percent_split_financial_ess.png")
-plt.show()
+# plt.title('Weekly Spend by Category (%)')
+# plt.xlabel('Week')
+# plt.ylabel('Percent of Total Spend')
+# plt.legend(title='Category', bbox_to_anchor=(1.05, 1), loc='upper left')
+# plt.tight_layout()
+# plt.savefig("output/weekly_percent_split_financial_ess.png")
+# plt.show()
 
-pivot_df = pivot_df.round(2)
-pivot_df.to_csv("output/weekly_percent_split_financial_ess.csv")
+# pivot_df = pivot_df.round(2)
+# pivot_df.to_csv("output/weekly_percent_split_financial_ess.csv")
 
 
-# median expenditure per week for the 8 categories
+# # median expenditure per week for the 8 categories
 
-median_df = weekly_df.groupby(['Week', 'category_split2'])['Original_verified_amount'].median().reset_index()
-median_df['weekly_category_median_spend'] = median_df['Original_verified_amount']
-# # # total amt/week
-median_df['weekly_totals'] = median_df.groupby('Week')['weekly_category_median_spend'].transform('sum')
-# # # percentage share/category
-median_df['Percent'] = (median_df['weekly_category_median_spend'] / median_df['weekly_totals']) * 100
+# median_df = weekly_df.groupby(['Week', 'category_split2'])['Original_verified_amount'].median().reset_index()
+# median_df['weekly_category_median_spend'] = median_df['Original_verified_amount']
+# # # # total amt/week
+# median_df['weekly_totals'] = median_df.groupby('Week')['weekly_category_median_spend'].transform('sum')
+# # # # percentage share/category
+# median_df['Percent'] = (median_df['weekly_category_median_spend'] / median_df['weekly_totals']) * 100
 
-pivot_df = median_df.pivot(index='Week', columns='category_split2', values='Percent').fillna(0)
+# pivot_df = median_df.pivot(index='Week', columns='category_split2', values='Percent').fillna(0)
 
-pivot_df.plot(
-    kind='bar',
-    stacked=True,
-    figsize=(10,6),
-    colormap='tab20' 
-)
+# pivot_df.plot(
+#     kind='bar',
+#     stacked=True,
+#     figsize=(10,6),
+#     colormap='tab20' 
+# )
 
-plt.title('Median Weekly Spend by Category (%)')
-plt.xlabel('Week')
-plt.ylabel('Percent of Total Spend')
-plt.legend(title='Category', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.tight_layout()
-plt.savefig("output/median_percent_split_financial_ess.png")
-plt.show()
+# plt.title('Median Weekly Spend by Category (%)')
+# plt.xlabel('Week')
+# plt.ylabel('Percent of Total Spend')
+# plt.legend(title='Category', bbox_to_anchor=(1.05, 1), loc='upper left')
+# plt.tight_layout()
+# plt.savefig("output/median_percent_split_financial_ess.png")
+# plt.show()
 
-pivot_df = pivot_df.round(2)
-pivot_df.to_csv("output/median_percent_split_financial_ess.csv")
+# pivot_df = pivot_df.round(2)
+# pivot_df.to_csv("output/median_percent_split_financial_ess.csv")
