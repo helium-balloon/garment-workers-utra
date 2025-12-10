@@ -4,7 +4,7 @@
 # Last edited: 12/3/25 Megan Ball
 
 import pandas as pd
-import matplotlib.pyplot as plt
+import numpy as np
 
 ## clean raw roster data
 # - make occupations not case sensitive
@@ -30,10 +30,7 @@ import matplotlib.pyplot as plt
 # check for standard package for generating summary stats of variables
 
 
-import pandas as pd
-import numpy as np
-
-diaries_df = pd.read_csv("clean-data\clean_Bangladesh_GWD_Diaries_w_median_consump.csv", index_col=False)
+diaries_df = pd.read_csv("Bangladesh\clean-data\clean_Bangladesh_GWD_Diaries_w_median_consump.csv", index_col=False)
 raw_df = pd.read_csv("raw data\Bangladesh\Bangladesh_GWD_Roster, anon.csv", index_col=False)
 household_df = raw_df.copy()
 
@@ -42,10 +39,26 @@ household_df = raw_df.copy()
 
 merged_df = pd.merge(diaries_df, household_df, how="left", on=["HHID", "RespID"])
 
-merged_df.to_csv("clean-data\merged_hh_consumption.csv")
+merged_df.to_csv("Bangladesh\clean-data\merged_hh_consumption.csv")
+
+print(household_df.loc[household_df['Gender1'] == 1, 'HH_Role'].value_counts())
+
+diaries_df["DateStart"] = pd.to_datetime(diaries_df["DateStart"])
+diaries_df["Month"] = diaries_df["DateStart"].dt.month
+
+week_dates = (
+    diaries_df
+    .sort_values("DateStart")        # ensure ordering within week
+    .groupby("Week", as_index=False)
+    .first()[["Week", "DateStart", "DateEnd", "Month"]]   # take the first row of each week
+)
+
+
+week_dates.to_csv("Bangladesh\output\week_date_ranges.csv", index=False)
+
 
 hh_members = household_df[['Household_mem']].value_counts()
-hh_members.to_csv("output\hh_members.csv")
+hh_members.to_csv("Bangladesh\output\hh_members.csv")
 
 # BASIC CLEANING / CHECK HOUSEHOLD IDS
 
@@ -109,14 +122,13 @@ def summary_stats(series):
     return pd.Series({
         'max': series.max(),
         'min': series.min(),
-        'mean': series.mean(),
-        'std_error': series.std() / np.sqrt(series.count()),
+        'mean': round(series.mean(), 2),
+        'std_error': round(series.std() / np.sqrt(series.count()), 2),
         'n': series.count()
     })
+
 
 summary_table = hh.apply(summary_stats).T
 
 # EXPORT SUMMARY TABLE
-summary_table.to_csv("output/summary_stats_households.csv")
-
-
+summary_table.to_csv("Bangladesh\output\summary_stats_households.csv")
